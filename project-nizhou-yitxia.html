@@ -1,0 +1,830 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN' 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="shortcut icon" type="image/vnd.microsoft.icon" href="../favicon.ico" />
+
+    <title>Computer Graphics - Final Project Proposal</title>
+
+    <link href="resources/bootstrap.min.css" rel="stylesheet">
+    <link href="resources/offcanvas.css" rel="stylesheet">
+    <link href="resources/custom2014.css" rel="stylesheet">
+    <link href="resources/twentytwenty.css" rel="stylesheet" type="text/css" />
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</head>
+
+<body>
+
+<div class="container headerBar">
+		<h1>Final Project Report - Ningfeng Zhou & Yitong Xia</h1>
+</div>
+
+<div class="container contentWrapper">
+<div class="pageContent">
+
+	<!-- ================================================================= -->
+
+	<h2>Motivational Image</h2>
+
+    <p style="text-align:center">
+        <img src="images/motivation.png", alt="Motivational Image" height="500"></p>
+    <p style="text-align:center">Motivational Image</p> <br/>
+    <p style="text-align:center">
+        <img src="images/moon_rabbit.jpg", alt="Motivational Image" height="250"></p>
+    <p style="text-align:center">Moon Rabbit</p>
+
+	<h3>Explanation</h3>
+    <p>
+        Similar to the Western folklore about "Man on the Moon", in Asian culture, the moon rabbit is a famous mythical figure 
+        that represents people's yearning and curiosity for outward exploration. 
+        As shown in the motivational image, the basic idea of our proposal is to place animals (eg. rabbits) as well as some common objects on earth to the moon's surface. 
+        The central theme for the image will ideally be a scene for rabbit civilization on the moon with Earth and the universe as the background, which is subtly the opposite of reality.
+        The "out of place" results from that the moon does not have the conditions for the rabbits' survival and civilization development.         
+    </p><br/> <br/>
+
+	<!-- ================================================================= -->
+
+	<h2><a id="home">Feature Lists</a></h2>
+    <p>
+        Below are the features we select for our <b>path tracer</b> to achieve better rendering performance. 
+    </p>
+
+    <h3>Features implemented by Ningfeng Zhou</h3>
+
+    <ul>
+        <li><b><a href="#homo_media">15.4 Homogeneous Participating Media [integrator: path tracer]</a></b></li>
+            <br/>
+        <li><b><a href="#camera_model">15.8 Advanced Camera Model</a> [<a href="#dof">depth of field</a>, <a href="#lensdistort">lens distortion</a>, <a href="#chromatic">chromatic aberrations</a>]</b> </li>
+            <br/>
+        <li><b><a href="#subsurface">30.2 Subsurface Scattering [photon-beam diffusion]</a></b></li>
+            
+    </ul>
+
+    <!-- ================================================================= -->
+
+    <h3>Features implemented by Yitong Xia</h3>
+
+    <ul>
+        <li><b><a href="#spotlight">5.10 Simple Extra Emitter [Spotlight]</a></b></li>
+            <br/>
+        <li><b><a href="#texturedarea">5.11 Textured Area Emitters</a></b> </li>
+            <br/>
+        <li><b><a href="#envmap">15.3 Environmental Map Emitter</a></b></li>
+            <br/>
+        <li><b><a href="#disney">15.5 Disney BSDFs</a> [<a href="#roughness">roughness</a>, <a href="#specular">specular</a>, <a href="#metallic">metallic</a>, <a href="#sheen">sheen</a>, <a href="#anisotropic">anisotropic</a>]</b></li>
+            <br/>
+        <li><b><a href="#nlmean">15.9 Moderate Denoising 1: NL-Means using Pixel Variance Estimates</a></b></li>
+            <br/>            
+    </ul>
+    
+    <h3><a href="#refer">References</a></h3>
+    <br/><br/>
+
+
+    <!-- ================================================================= -->
+
+    <h2>Feature Implementation</h2>
+
+    <h3><a id="homo_media"></a>Homogeneous Participating Media [integrator: path tracer] Implementer: Ningfeng Zhou <a href="#home">[home]</a></h3>
+        <ul>
+            <li> Main file created for the feature (other files trivally modified for code frame are listed in ./nori/modifiedFiles.txt) </li>
+        </ul>
+        <code>./include/nori/medium.h</code> <br/>
+        <code>./include/nori/volpathmis.h</code> <br/>
+        <code>./src/medium.cpp</code> <br/>
+        <code>./src/volpathmis.cpp</code> <br/>
+
+    <p>
+        To implement the homogeneous media, firstly I create a medium class <code>HomogeneousMedium</code> (here for simplicity, I did not include an abstract Medium class) to perform free path sampling. 
+        For the phase function, I implemented Henyey Greenstein since it is more generic. Both class support functions such as <code>sample()</code>, <code>eval()</code> and <code>pdf()</code>, which will be used by the volume path tracer. 
+        Thus in total, the four additional parameters added onto the medium are \(\sigma_a\), \(\sigma_s\), resulting \(\sigma_t\), and \(g\).
+
+        <br/><br/>
+
+        The volume path tracer follows roughly the same routine as the path_mis integrator, but instead of only sampling between lights and BSDFs, the sampling between phase function and light should also be considered. 
+        Besides, additional revisions are also made. Such as attaching the medium class pointer onto the tagged shape or scene and skipping the collision of medium "shape" for ray tracing to avoid the wrong intersection;
+        change light visibility test from a simple intersection test to quantified light attenuation effect when inside the medium (achieved in function <code>estimateLightTr()</code>).
+        Besides, multiple importance sampling not only between the BSDF and the emitter but also between the phase function and the emitter is also considered to gain better results.
+        The code is mainly based on the path_mis implemented in assignment 4, some codes are inspired by PBRT, but with my own implementation suitable for nori.
+
+        <br/><br/>
+
+        The first result tests the performance of a medium inside the sphere. It is shown here compared with the Mitsuba implementation and the PBRT implementation. We can see that it 
+        gives roughly the same result.
+
+        <div class="twentytwenty-container">
+            <img src="images/cbox_media_mitsuba.png" alt="Mitsuba" class="img-responsive">
+            <img src="images/cbox_media_pbrt.png" alt="PBRT" class="img-responsive">
+            <img src="images/cbox_media_mine.png" alt="Mine" class="img-responsive">
+        </div> <p style="text-align:center">Comparison to Other Renderers</p><br/><br/>
+
+        More results are shown to illustrate the comparison results and the effect of the scattering coefficient. The first medium below is set with \(\sigma_s = 0\) (no scattering).
+
+        <div class="twentytwenty-container">
+            <img src="images/cbox_media_mitsuba_nos.png" alt="Mitsuba" class="img-responsive">
+            <img src="images/cbox_media_pbrt_nos.png" alt="PBRT" class="img-responsive">
+            <img src="images/cbox_media_mine_nos.png" alt="Mine" class="img-responsive">
+        </div> <p style="text-align:center">Comparison without Scattering</p> <br/> <br/>
+
+        The image below shows the effect of increasing scattering parameter \(\sigma_s\) to adjust the property of the medium.
+        <div class="twentytwenty-container">
+            <img src="images/cbox_media_pbrt_ws.png" alt="PBRT" class="img-responsive">
+            <img src="images/cbox_media_mine_ws.png" alt="Mine" class="img-responsive">
+        </div> <p style="text-align:center">Comparison with Scattering</p><br/> <br/>
+
+        Besides analytical mesh such as the sphere, I also create a scene with a bunny-like medium. It generates the same result as Mitsuba. Besides, from the dielectric sphere near the bunny, 
+        some mediums can also be seen from the sphere.
+        <div class="twentytwenty-container">
+            <img src="images/cbox_media_mitsuba_difshape.png" alt="Mitsuba" class="img-responsive">
+            <img src="images/cbox_mine_homo_difshape.png" alt="Mine" class="img-responsive">
+        </div> <p style="text-align:center">Comparison using a Different Shape</p><br/> <br/>
+        To render a good image, the multiple importance sampling should be taken into account. The images below illustrate the difference between MIS, EMS, MATS. 
+        To highlight the effect of MIS, an additional dielectric sphere is added in the scene to increase the rendering difficulty. It can be shown that the MIS greatly reduces the noise and thus smooths the image. 
+
+        <div class="twentytwenty-container">
+            <img src="images/cbox_mine_homo_complex_ems.png" alt="EMS" class="img-responsive">
+            <img src="images/cbox_mine_homo_complex_mats.png" alt="MATS" class="img-responsive">
+            <img src="images/cbox_mine_homo_complex_mis.png" alt="MIS" class="img-responsive">
+        </div> <p style="text-align:center">Comparison of EMS, MATS, and MIS</p><br/><br/>
+
+        At last, for the phase function, Below shows the results of varying the asymmetry parameter \(g\). By increasing the g to be positive, more light is scattered forward to generate a lighter scene in the Cornell box. 
+        Inversely with the negative value, the scene will become darker due to the increasing amount of backward lights.
+        <div class="twentytwenty-container">
+            <img src="images/cbox_mine_homo_gn08.png" alt="negative g" class="img-responsive">
+            <img src="images/cbox_mine_homo_g08.png" alt="positive g" class="img-responsive">
+            <img src="images/cbox_mine_homo_g00.png" alt="zero g" class="img-responsive">
+        </div> <p style="text-align:center">Comparison of Different g</p><br/>
+    </p>
+
+
+    <h3><a id="camera_model"></a>Advanced Camera Model [depth of field, lens distortion, chromatic aberrations] Implementer: Ningfeng Zhou <a href="#home">[home]</a></h3>
+        We can add some additional camera properties to the pin-hole camera to generate more realistic images. Here we select to implement the depth of field, 
+        the lens distortion, and the chromatic aberration for our project.
+    <ul>
+        <li> Main file created for the feature (other files trivally modified for code frame are listed in ./nori/modifiedFiles.txt) </li>
+    </ul>
+    <code>./include/nori/warp.h</code> <br/>
+    <code>./include/nori/camera.h</code> <br/>
+    <code>./src/warp.cpp</code> <br/>
+    <code>./src/thinlenscam.cpp</code> <br/>
+    <code>./src/render.cpp</code> <br/>
+
+    <h4>Depth of Field <a id="dof"></a></h4>
+
+    <p>
+        Inspired by PBRT, based on the simple pin-hole camera, we add two additional parameters: the radius of the thin lens, and focal plane distance \(f\) for the camera. 
+        When the pixel is fixed, the original ray is formed as \(ray_i(o, d)\). Then additional sampling is applied to shift the origin of the ray to the intersection point onto the disk-shaped thin lens. 
+        Knowing that the ray passes the center of the lens will not change the direction, the intersection between the camera ray and the focal plane can simply be computed using the following formula.
+
+        $$\vec{p_f} = \vec{o} + \frac{f}{d_z} \vec{d}$$
+
+        To sample the point on the thin lens, I add an additional concentric disk sampling algorithm to the <code>Warp</code> class. It uniformly maps the square onto the disk while keeping the samples less distorted than the original uniform sampling method. 
+        My implementation also passes the warp test.
+
+        <p style="text-align:center">
+            <img src="images/warptest_concentricDiskSample.png", alt="Sampling Result" height="500"></p>
+        <p style="text-align:center">Concentric Disk Sampling Result</p> <br/>
+
+        <p style="text-align:center">
+            <img src="images/warptest_concentricDisk.png", alt="Warp test" height="500"></p>
+        <p style="text-align:center">Warp Test Result</p> <br/><br/>
+
+        After the implementation, the depth of field works on the thin lens camera. By adjusting the focal plane distance, objects from different distances will be blurred.
+        The radius can control the degree of DoF since when it is infinitesimal, the camera will act like a pin-hole camera despite the change of focal plane distance.
+    </p>
+        <div class="twentytwenty-container">
+            <img src="images/cbox_mine_cam_rl.png" alt="Small Radius" class="img-responsive">
+            <img src="images/cbox_mine_cam_rs.png" alt="Large Radius" class="img-responsive">
+        </div> <p style="text-align:center">Comparison of Different Lens Radii</p><br/> <br/>
+        <div class="twentytwenty-container">
+            <img src="images/cbox_mine_cam_ds.png" alt="Smaller Focal Dist" class="img-responsive">
+            <img src="images/cbox_mine_cam_dl.png" alt="Small Focal Dist" class="img-responsive">
+        </div> <p style="text-align:center">Comparison of Different Focal Plane Distances</p><br/> <br/>
+
+        <div class="twentytwenty-container">
+            <img src="images/cbox_mine_doffar.png" alt="Far focus" class="img-responsive">
+            <img src="images/cbox_mine_dofnear.png" alt="Near focus" class="img-responsive">
+        </div> <p style="text-align:center">Images with Different Focuses</p><br/> <br/>
+
+
+
+    <h4>Lens Distortion <a id="lensdistort"></a></h4>
+
+    <p>
+        The radial distortion formula for the lens is introduced here to synthesize the lens distortion effect. The formula below illustrates how the \(x\) 
+        and \(y\) of the undistorted pixel are shifted to \(x'\) and \(y'\) according to its radius \(r\) from the center. Parameter \(k_1\) and \(k_2\) are added to the properties of our thin lens camera.
+
+        $$x' = x + x[k_1 (x^2 + y^2) + k_2 (x^2 + y^2)^2] = x (1 + k_1 r^2 + k_2 r^4 )$$
+        $$y' = y + y[k_1 (x^2 + y^2) + k_2 (x^2 + y^2)^2] = y (1 + k_1 r^2 + k_2 r^4 )$$
+
+        Thus, an additional shift is applied to the sampled pixel position to simulate radial distortion. To estimate \(x\) and \(y\) given \(x'\) and \(y'\), 
+        we need to solve the inverse of the equation. Following the method mentioned in publication <a href="#radial">[5]</a>, an iterative gradient-based method 
+        is used here to estimate the undistorted pixel position \(x\) and \(y\). The left part of the ray sampling procedure remains unchanged. By this method, the rendered image 
+        can give the barrel and pincushion distortion as expected to simulate the realistic camera. The barrel distortion is achieved with a negative \(k\) value while the pincushion distortion is achieved with a positive one. 
+
+    <br/><br/>
+
+        To gain better visualization of the distortion, an additional checkboard is added to the scene. By comparing the images with and without the lens distortion feature, we 
+        can see that the feature works as expected.
+        <div class="twentytwenty-container">
+            <img src="images/cbox_mine_wold.png" alt="Undistorted" class="img-responsive">
+            <img src="images/cbox_mine_pc.png" alt="Pincushion" class="img-responsive">
+        </div> <p style="text-align:center">Simulated Pincushion Distortion</p><br/> <br/>
+        <div class="twentytwenty-container">
+            <img src="images/cbox_mine_wold.png" alt="Undistorted" class="img-responsive">
+            <img src="images/cbox_mine_br.png" alt="Barrel" class="img-responsive">
+        </div> <p style="text-align:center">Simulated Barrel Distortion</p><br/> <br/>
+
+    </p>
+
+
+    <h4>Chromatic Aberrations <a id="chromatic"></a></h4>
+
+    <p>
+        Chromatic aberration (CA) is mainly due to the different refractive indices for different wavelengths. The light with larger wavelengths will be bent less by the lenses. 
+        To balance between the simplicity and the visual effects, I discretize the cases onto the three RGB channels. Take the green channel as the reference,
+        two additional parameters controlling the scale ratio of red channel \(r_r\) and blue channel \(r_b\) are added onto the thin lens camera. Then rays are sampled and adjusted per channel to simulate the effect. 
+        For the detailed implementation, the mechanism is actually similar to the lens distortion procedure (which is also induced by the refraction of lenses).
+        The sampled pixel position "nearP" is modified for each channel by rescaling its radius to the image center. 
+        Since the blue ray has a higher wavelength, it should be farther away from the center than the green ray. 
+        At last, the radiances of three monochromatic rays are added up to generate the final color of the image. 
+
+        Here since the red rays should be bent less, the \(r_r\) ratio here is set to be higher than \(1\). Similarly, the \(r_b\) is slightly lower than \(1\). Eventually, it gives convincing results as shown below. 
+        From the center to the boundary of the image, the chromatic aberration gradually increases. Theoratically, the chromatic aberration only exists if the lens radius is positive (non-zero), since pin-hole camera will not have any refraction effect. 
+        But here for better visualization, the image below did not add additional lens distortion and depth of field.
+
+        <div class="twentytwenty-container">
+            <img src="images/cbox_mine_cana.png" alt="Original" class="img-responsive">
+            <img src="images/cbox_mine_calr.png" alt="With CA" class="img-responsive">
+        </div> <p style="text-align:center">Simulated Chromatic Aberration (not-physically plausible, only for illustration)</p><br/> <br/>
+
+        To generate a better physically-plausible scene, images with both chromatic aberration and depth of field is shown below (which is also the final version to submit). 
+        <div class="twentytwenty-container">
+            <img src="images/cbox_mine_cana_dof.png" alt="DoF w/o CA" class="img-responsive">
+            <img src="images/cbox_mine_calr_dof.png" alt="DoF with CA" class="img-responsive">
+        </div> <p style="text-align:center">Simulated CA with DoF</p><br/> <br/>
+
+        For a general visualization, all effects are added together to generate the following scene.
+        <div class="twentytwenty-container">
+            <img src="images/cbox_mine_cam_none.png" alt="Original" class="img-responsive">
+            <img src="images/cbox_mine_cam_all.png" alt="Thin Lens" class="img-responsive">
+        </div> <p style="text-align:center">General Simulated Thin Lens Camera</p><br/> <br/>
+
+
+    </p>
+
+    <h3><a id="subsurface"></a>Subsurface Scattering [photon-beam diffusion] Implementer: Ningfeng Zhou <a href="#home">[home]</a></h3>
+    <p>
+        <ul>
+            <li> Main file created for the feature (other files trivally modified for code frame are listed in ./nori/modifiedFiles.txt) </li>
+        </ul>
+        <code>./include/nori/bssrdf.h</code> <br/>
+        <code>./include/nori/subsurface.h</code> <br/>
+        <code>./src/bssrdf.cpp</code> <br/>
+        <code>./src/subsurface.cpp</code> <br/>
+    
+        To achieve realistic scattering effects while preventing heavy computation for the complete medium scattering happening inside the object, 
+        subsurface scattering is put forward to simplify the computing process under some assumptions. We introduce bidirectional scattering surface 
+        reflectance distribution function (BSSRDF) \(S(p_o, \omega_o, p_i, \omega_i) \) to estimate such an event. To decrease its complexity, the theories nowadays usually divide it into three parts, 
+        including two directional components (\( (1-Fr(\cos \theta_o)) \) and \(S_\omega(\omega_i)\)) describing the transmission into and out of the objects, 
+        the last term \(S_p(p_o, p_i)\) is a spatial term estimating the energy consumption from point \(p_i\) to point \(p_o\) due to the inner scattering.
+
+        $$ S(p_o, \omega_o, p_i, \omega_i) = (1-Fr(\cos \theta_o)) S_p(p_o, p_i) S_\omega(\omega_i)$$
+        
+        For further simplification, the \(S_p\) term is assumed to be a function of the distance, while the \(S_\omega\) term is roughly estimated using a normalized fresnel equation. The BSSRDF then becomes 
+        (\(c\) is the normalizing constant):
+
+        $$ S(p_o, \omega_o, p_i, \omega_i) = (1-Fr(\cos \theta_o)) S_r(||p_o, p_i||) \frac{1-Fr(\cos \theta_i)}{c\pi} $$
+
+        There are many theories and methods about the quantification of \(S_r\) term. For the implementation of photon-beam diffusion (PBD), it is mainly based on the dipole model of diffusion, 
+        but instead of assuming the "source" at the mean free path depth, PBD calculates an integral of possible effects over a semi-infinite interval, which significantly reduces the approximation error, 
+        especially when the ray is close to the "source".
+        
+        $$E_d(p) = \int_{0}^{\infty} \sigma'_s \exp(-\sigma'_t z_r) E_d(p, z_r) \mathrm{d} z_r$$
+        
+        Besides, for more precise computation, the method takes care of the single scattering event especially using the integral:
+
+        $$E_{ss, F_r}(p) = \int_{0}^{\infty}  \frac{\sigma_s \exp{-\sigma_t (t + d)}}{d^2} p(-\cos \theta_o) (1-Fr(\eta, -\cos \theta_o))|\cos \theta_o| \mathrm{d} t$$
+
+        Following the guidelines of PBRT, we further used the two equations above to pre-compute a table for a given subsurface object with fixed \(\eta\) and asymmetry parameter \(g\). Then when sampling happens, 
+        we apply Catmull-rom spline interpolation to weight the pre-computed table for different searching radii \(r\) and different color \(\rho\) to get the estimated response. Besides, the two integrals are computed using 
+        brutal force sampling and summing. The main analytical equations used in the implementation is refered from PBRT.
+
+        <br/><br/>
+
+        To achieve the effect, I create a new type for nori called <code>Subsurface</code>, and can be attached to any shape. The pre-computed table will be formed once the class <code>Subsurface</code> is initiated during the scene-setting process. 
+        Then for each intersection point of ray which hits the shape with the subsurface property. First, it will act as a <code>Dielectric</code>BSDF: reflecting some rays back to the scene to create the reflective effect; 
+        refract some rays inside the shape when the subsurface sampling takes place. By sampling the BSSRDF function, we can sample a different point on the shape (usually near the original intersection point) as the \(p_i\) and the 
+        corresponding radiance assumption estimation. Then at the new sampled point \(p_i\), we warp the \(S_\omega\) evaluation and \(\omega_i\) sampling using <code>Diffuse-like</code> BSDF. It means that 
+        we account for the \(S_\omega\) and radiance changing due to transmission for the radiance calculation while using a cosine-weighted distribution to sample a new direction for the ray direction in the next iteration. 
+
+        <br/><br/>
+
+        Below are my results for the subsurface scattering implementation. With the \(\sigma_s\) and \(sigma_a\) fixed, by changing the \(\eta\) parameter, we can 
+        modify the transparency of the shape by controlling the ratio of rays between transmission and reflection under the guidance of the Fresnel equation.
+
+        <div class="twentytwenty-container">
+            <img src="images/cbox_subsurface_mine_cream120.png" alt="eta=1.2" class="img-responsive">
+            <img src="images/cbox_subsurface_mine_cream150.png" alt="eta=1.5" class="img-responsive">
+        </div> <p style="text-align:center">ETA Comparison</p><br/> <br/>
+
+
+        Besides, by applying multiple importance sampling, we can reach a smoother result as shown below. Here the EMS and MATS are only modified when sampling the BSSRDF function, thus the result mainly differs for the subsurface shape. 
+        (All the other sampling strategies such as the sampling between other BSDF and light are not changed to directly show the effect of MIS for BSSRDF.) 
+        Here we can see that MATS result has much more noise in general. But since the BSSRDF has a large portion of specular responce (by direct reflection), the EMS result is not very different from the MIS part (with small artifacts though).
+
+        <div class="twentytwenty-container">
+            <img src="images/cbox_subsurface_mine_apple_ems.png" alt="EMS" class="img-responsive">
+            <img src="images/cbox_subsurface_mine_apple_mat.png" alt="MATS" class="img-responsive">
+            <img src="images/cbox_subsurface_mine_apple_mis.png" alt="MIS" class="img-responsive">
+        </div> <p style="text-align:center">Comparison between EMS, MATS, and MIS</p><br/> <br/>
+
+        <h4>Possible Error Implementation of PBRTv3</h4>
+        After a few parameter tests, the implementation seems to work as expected. But when I compared it with the PBRTv3 implementation, I found that my images are always slightly lighter than the PBRT version (not quite visible). 
+        I looked into the details of implementation. And after spending a lot of time debugging, I found out that the result of PBRT is not as it is supposed to be. As I mentioned before, when a ray first intersect a subsurface-taged shape, 
+        it performs like a <code>Dielectric</code> BSDF before choosing to refract. The implementation is quite the same in PBRT, but the <code>Dielectric</code> implementation (called <code>FresnelSpecular</code> in PBRT) does not work correctly. 
+        As shown below, removing the subsurface property of the bunny shape and adding a single <code>FresnelSpecular</code> or <code>Dielectric</code> BSDF onto it give me the results as follows:
+
+        <div class="twentytwenty-container">
+            <img src="images/cbox_pbrt_glass.png" alt="PBRT" class="img-responsive">
+            <img src="images/cbox_mitsuba_glass.png" alt="Mitsuba" class="img-responsive">
+            <img src="images/cbox_nori_glass.png" alt="Nori/Mine" class="img-responsive">
+        </div> <p style="text-align:center">Possible Wrong Implementation of PBRT Material</p><br/> <br/>
+
+        We can see that there is a clear difference, especially around the part where reflectance should be the dominant effect (especially around the back, but generally darker). <b>So I assume PBRT implement the Dielectric material wrongly.</b>
+        I looked into the implementation code of PBRT but did not find out any problem with the class <code>FresnelSpecular</code>. 
+        I assume that the error may occur in other frame code parts. (The other materials like <code>Diffuse</code> runs as expected) I also searched the Github of PBRTv3 and found some complaints about the BxDFs and subsurface scattering (though I did not find the specific answer to my question.) 
+        I may check again and open an issue on the PBRT Github then. 
+        
+        <br/> <br/>
+
+        But considering the effect, the comparison between my implementation and the PBRT results looks much more convincing. Two reference views are shown below, we can see that 
+        the most different parts are the most incorrectly "darkened" part. <b>In the PBRT version, the highlights of the back and ear of the bunny are also not quite smooth. But mine has a smooth highlight which seems to be more realistic because of the correct glass reflection. 
+        Thus I think although my implementation did not give the same result as PBRT, my implementation may not be wrong considering the artifacts in PBRT I encountered (and the other experiments I tried).</b> 
+
+        <div class="twentytwenty-container">
+            <img src="images/cbox_subsurface_pbrt1.png" alt="PBRT" class="img-responsive">
+            <img src="images/cbox_subsurface_mine1.png" alt="Mine" class="img-responsive">
+        </div> <p style="text-align:center">Comparison to PBRT (problematic due to the incorrect material of PBRT)</p><br/> <br/>
+
+        <div class="twentytwenty-container">
+            <img src="images/cbox_subsurface_pbrt2.png" alt="PBRT" class="img-responsive">
+            <img src="images/cbox_subsurface_mine2.png" alt="Mine" class="img-responsive">
+
+        </div> <p style="text-align:center">Comparison to PBRT (slightly problematic due to the incorrect material of PBRT)</p><br/> <br/>
+
+        If the scene is created to have less reflective surface projected onto the camera, the difference will then become less obvious. The result below creates a scene where the glass material will not reflect much onto the camera.
+        From the comparison below, there are less differences between the two renderer for the "glass" material, which results in quite similar subsurface scattering effect. 
+        <div class="twentytwenty-container">
+            <img src="images/sub_teapot_pbrt_glass.png" alt="PBRT" class="img-responsive">
+            <img src="images/sub_teapot_mitsuba_glass.png" alt="Mitsuba" class="img-responsive">
+            <img src="images/sub_teapot_mine_glass.png" alt="Mine" class="img-responsive">
+        </div> <p style="text-align:center">Comparison to PBRT (similar setting)</p><br/> <br/>
+
+        From my perspective, the slight noise of my image may come from the "glassy reflection" of my scene, same as some slightly darken parts.    
+        It is actually also possible to cleverly tune the scene setting to prevent most of the differeces. However, I still consider the implementation may be a problem about the implementation of PBRT.
+
+        <div class="twentytwenty-container">
+            <img src="images/sub_teapot_pbrt_sim.png" alt="PBRT" class="img-responsive">
+            <img src="images/sub_teapot_mine_sim.png" alt="Mine" class="img-responsive">
+        </div> <p style="text-align:center">Comparison to PBRT (similar setting)</p><br/> <br/>
+    </p>
+
+
+	<!-- ================================================================= -->
+
+	<!-- ================================================================= -->
+
+	<h3><a id="imgtexture"></a>5.3 Image As Textures Implementer: Yitong Xia <a href="#home">[home]</a></h3>
+    <ul>
+        <li><code>include/nori/lodepng.h</code></li>
+        <li><code>src/image_texture.cpp</code></li>
+        <li><code>src/lodepng.cpp</code></li>
+    </ul>
+    Firstly we import the image texture from the desired path by using <code>filesystem/resolver.h</code> and LodePNG<a href="#ref1">[1]</a>. <br>
+    Then we apply gamma correction to the decoded image. Otherwise, the texture will be fainter than it supposes to be. <br>
+    The results on non-plane meshes are shown below. I have also implemented a rectangle shape for Textured Area Emitter and the corresponding results will be shown in that section.
+
+    <div class="twentytwenty-container" style="width: 600px">
+        <img src="images/Xia-Yitong-Images/image_texture/imgtexture_path_mis_AREA.png" alt="Nori" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/image_texture/ref_imgtexture_path_mis_AREA.png" alt="Mitsuba" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/image_texture/imgtexture_path_mis_NOcorrection.png" alt="Nori <br>w/o Gamma Correction" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/image_texture/imgtexture_path_mis_NOtexture.png" alt="Nori <br>w/o Texture" class="img-responsive">
+    </div>
+    <p class="text-center"> Image As Textures: comparisons using PathMIS integrators. SPP = 256.</p>
+
+	<!-- ================================================================= -->
+
+	<h3><a id="spotlight"></a>5.10 Simple Extra Emitter: Spotlight Implementer: Yitong Xia <a href="#home">[home]</a></h3>
+    <ul>
+        <li><code>src/spotlight.cpp</code></li>
+    </ul>
+    There is a <code>FallOut</code> \(\theta_f\) to control the constant lighting cone. Any ray whose angle to the emitter axis falls within this cone will get full radiance. There is a <code>TotalWidth</code> \(\theta_w\) to control the lighting boundary. Any ray whose angle to the emitter axis falls outside this cone will get no radiance at all. The radiance transition between these two cones is defined as the fallout coefficient, ranging in \([0, 1]\). I follow the same design on the spotlight as Mitsuba's, where the fallout coefficient within two cones will decay linearly as \( \frac{\theta_w - \theta}{\theta_w - \theta_f} \), instead of 5-orderly as PBRT does. The radiance transition between these two cones is defined by the fallout coefficient that ranges in \([0, 1]\). <br>
+    In Nori, the <code>flux/power</code> \(\Phi\) is defined by the user, and the radiance is computed by \( \frac{\Phi(1-\cos{\theta_w})}{2\pi r^2} \), multiplied by the fallout coefficient. <br>
+
+    <div class="twentytwenty-container" style="width: 600px">
+        <img src="images/Xia-Yitong-Images/spotlight/spot_direct_mis.png" alt="Nori (DirectMIS)" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/spotlight/ref_spot_direct_mis.png" alt="Mitsuba (DirectMIS)" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/spotlight/spot_path_mis.png" alt="Nori (PathMIS)" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/spotlight/ref_spot_path_mis.png" alt="Mitsuba (PathMIS)" class="img-responsive">
+    </div>
+    <p class="text-center"> Spotlight: comparisons between Nori and Mitsuba. \(\theta_f=30^\circ, \theta_w=40^\circ. \) SPP = 512.</p>
+
+
+	<!-- ================================================================= -->
+
+
+	<h3><a id="texturedarea"></a>5.11 Textured Area Emitters Implementer: Yitong Xia <a href="#home">[home]</a></h3>
+    <ul>
+        <li><code>src/rectangle.cpp</code></li>
+        <li><code>src/textured_area.cpp</code></li>
+        <li><code>src/textured_area_rectangle.cpp</code></li>
+        <!-- <li><code>src/direct_ems.cpp</code></li>
+        <li><code>src/direct_mats.cpp</code></li>
+        <li><code>src/direct_mis.cpp</code></li>
+        <li><code>src/path_mats.cpp</code></li>
+        <li><code>src/path_mis.cpp</code></li> -->
+    </ul>
+
+    I implement two types of textured area emitters. The first one (<code>src/textured_area.cpp</code>) is for non-plane mesh and it isn't equipped with importance sampling. The second one (<code>src/textured_area_rectangle.cpp</code>) is what I accidentally found in this <a href="https://gitlab.inf.ethz.ch/OU-CG-TEACHING/nori/-/issues/160">issue</a> on GitLab, where we are suddenly required to implement import sampling for quad light. Thus, I implemented a rectangle shape and a new emitter for it. This update burdens the workload of this feature so much and I think it deserves more than just 5 points. 
+
+    Firstly I will show the first version of the textured area emitter for non-plane mesh without importance sampling. There are differences in results between my implementation and Mitsuba's. This is reasonable since the differences come from my absence of importance sampling. But I would like to point out that the general direct and diffusing lighting effects match with Mitsuba.
+
+    <div class="twentytwenty-container" style="width: 600px">
+        <img src="images/Xia-Yitong-Images/textured_area_emitter/path_mis.png" alt="Nori <br>w/ texture" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/textured_area_emitter/ref_path_mis.png" alt="Mitsuba <br>w/ texture" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/textured_area_emitter/path_mis_NOtexture.png" alt="Nori <br>w/o texture" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/textured_area_emitter/ref_path_mis_NOtexture.png" alt="Mitsuba <br>w/o texture" class="img-responsive">
+    </div>
+    <p class="text-center"> Textured Area Emitters: comparisons without importance sampling and using PathMIS integrator.</p> <br>
+
+    Then I implement the quad emitter with importance sampling. Firstly, I implement a rectangle shape in <code>src/rectangle.cpp</code>, where the image texture can be freely attached on. To fully define a rectangle shape, the user needs to set the corner origin's position, width, height, direction of width, direction of height, and direction of normal. And considering the need for adjusting textures, I use <code>scale_x</code> and <code>scale_y</code> to control the periodicity of the UV coordinates and thus control the texture scaling. <br>
+    To get the UV coordinates of query points, I add <code>uv</code> attribute to <code>EmitterQueryRecord</code> and it will be passed inside of integrators.
+
+    <div class="twentytwenty-container" style="width: 600px">
+        <img src="images/Xia-Yitong-Images/textured_area_emitter/plane_texture_1.png" alt="scale_x = 0.1<br>scale_y = 0.1" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/textured_area_emitter/plane_texture_2.png" alt="scale_x = 1.0<br>scale_y = 0.5" class="img-responsive">
+    </div>
+    <p class="text-center"> Rectangle Shape: with scaled texture and PathMIS integrators. SPP = 512.</p> <br>
+
+
+    Secondly, I implement importance sampling in <code>src/textured_area_rectangle.cpp</code>, the very technique used in environmental map emitter, which is also one of my task features. The majority of implementation details are almost the same. In my codes, I implement both Uniform Sampling and Importance Sampling and they can be selected by controlling <code>use_importance</code>. The results are shown below. It can be clearly seen that Importance Sampling achieves smoother diffuse surfaces.
+
+    <div class="twentytwenty-container" style="width: 600px">
+        <img src="images/Xia-Yitong-Images/textured_area_emitter/importance.png" alt="Nori Importance" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/textured_area_emitter/uniform.png" alt="Nori Uniform" class="img-responsive">
+    </div>
+    <p class="text-center"> Textured Area Emitters: comparisons on rendering results between different sampling strategies using PathMIS integrator. SPP = 512.</p> <br>
+
+    To verify the correctness of my sampling, I record the sampled points by activating single-thread rendering and plot them back on the texture afterward. From the results of Importance Sampling, we can clearly see its effectiveness, since samples have more probabilities to be sampled in the regions with higher luminance values, which is what we desire. Sampled points are plotted in red for better visualization.
+
+    <div class="twentytwenty-container" style="width: 600px">
+        <img src="images/Xia-Yitong-Images/textured_area_emitter/importance_sampled.png" alt="Nori Importance" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/textured_area_emitter/uniform_sampled.png" alt="Nori Uniform" class="img-responsive">
+    </div>
+    <p class="text-center"> Textured Area Emitters: comparisons on sampling results between different sampling strategies. 25k samples each.</p> <br>
+
+
+	<!-- ================================================================= -->
+
+
+	<h3><a id="envmap"></a>15.3 Environmental Map Emitter Implementer: Yitong Xia <a href="#home">[home]</a></h3>
+    <ul>
+        <li><code>src/envmap.cpp</code></li>
+        <!-- <li><code>scenes/final/env_map/plot_samples.ipynb</code></li>  -->
+    </ul>
+
+    Similar to quad textured area emitter, I implement both Uniform Sampling and Importance Sampling and they can be selected by controlling <code>use_importance</code>.<br>
+    But for the environmental map, differences are: (1) the intersection is not directly provided by integrators but by converting from ray direction; (2) the environmental map doesn't need to attach to a sphere shape with a finite radius. There exists a unique conversion between different coordinate representations. <br><br>
+
+    For coordinate representations, it involves the conversions between unit ray direction vector, theta-phi representation, UV coordinate, and row-column coordinate on the environmental map. For <code>eval()</code>, I add a bilinear interpolation to achieve precise envmap querying. For <code>sample()</code>, I use inverse sampling upon the row- and column-wise CDFs that are prepared during initializing. For <code>pdf()</code>, there involves the following convertions<a href="#ref2">[2]</a>:
+
+    $$
+        p(\omega) = \frac{p(\theta,\phi)}{\sin\theta} = \frac{p(u, v)}{2\pi^2\sin\theta} = \frac{ p(r, c)N_R N_C }{2\pi^2\sin\theta},
+    $$
+    where \( p(r, c) \) is what we sampled from the environmental map using inverse sampling. Following what we learned from the course, firstly I sample a \( p(r) \) and then sample \( p(c|r) \). I use <code>std::vector</code> to store CDFs so that I can search with <code>std::lower_bound()</code>.<br><br>
+
+    Rendering results on a bright and a dark scene are shown below. It can be seen that Nori's results match Mitsuba's in both scenes. Please notice that the results with Importance Sampling have no fireflies on the diffused material surface.<br><br>
+
+    To verify the correctness of my results, I record the sampled points by activating single-thread rendering and plot them back on the texture afterward. From the results of Importance Sampling, we can clearly see its effectiveness, since samples have more probabilities to be sampled in the brighter regions, which is what we desire. Sampled points are plotted in black and red for better visualizations.
+
+    <div class="twentytwenty-container" style="width: 600px">
+        <img src="images/Xia-Yitong-Images/env_map/dawn.png" alt="Nori Importance" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/env_map/dawn_uniform.png" alt="Nori Uniform" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/env_map/ref_dawn.png" alt="Mitsuba" class="img-responsive">
+    </div>
+    <p class="text-center"> Environmental Map Emitter: comparisons on Dawn scene rendering results using PathMIS integrator. SPP=512. </p> <br>
+
+    <div class="twentytwenty-container" style="width: 800px">
+        <img src="images/Xia-Yitong-Images/env_map/dawn_2k.png" alt="Importance<br>2k samples" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/env_map/dawn_uniform_2k.png" alt="Uniform<br>2k samples" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/env_map/dawn_20k.png" alt="Importance<br>20k samples" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/env_map/dawn_uniform_20k.png" alt="Uniform<br>20k samples" class="img-responsive">
+    </div>
+    <p class="text-center"> Environmental Map Emitter: comparisons on Dawn scene sampling results. </p> <br>
+
+    <div class="twentytwenty-container" style="width: 600px">
+        <img src="images/Xia-Yitong-Images/env_map/night.png" alt="Nori Importance" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/env_map/night_uniform.png" alt="Nori Uniform" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/env_map/ref_night.png" alt="Mitsuba" class="img-responsive">
+    </div>
+    <p class="text-center"> Environmental Map Emitter: comparisons on Night scene rendering results using PathMIS integrator. SPP=512. </p> <br>
+
+    <div class="twentytwenty-container" style="width: 800px">
+        <img src="images/Xia-Yitong-Images/env_map/night_2k.png" alt="Importance<br>2k samples" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/env_map/night_uniform_2k.png" alt="Uniform<br>2k samples" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/env_map/night_20k.png" alt="Importance<br>20k samples" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/env_map/night_uniform_20k.png" alt="Uniform<br>20k samples" class="img-responsive">
+    </div>
+    <p class="text-center"> Environmental Map Emitter: comparisons on Night scene sampling results. </p> <br> 
+
+
+    <!-- ================================================================= -->
+
+
+    <h3><a id="disney"></a>15.5 Disney BSDFs [roughness, specular, metallic, sheen, anisotropic] Implementer: Yitong Xia <a href="#home">[home]</a></h3>
+    <ul>
+        <li><code>include/nori/warp.h</code></li>
+        <li><code>src/disney.cpp</code></li>
+        <li><code>src/warp.cpp</code></li>
+        <li><code>src/warptest.cpp</code></li>
+    </ul>
+
+    The Disney BRDFs are designed for artists to tune materials thus it's not totally physically correct. Following some references<a href="#ref3">[3]</a><a href="#ref4">[4]</a>
+
+    <h4> Roughness <a id="roughness"></a> </h4>
+
+    Roughness is used for controlling the degree of surface rougness. The diffuse lobe is defined as:
+    $$
+        f_d(\theta_i,\theta_o) = \frac{m\_baseColor}{\pi} (1 + (F_{D90} - 1) F(\theta_i)) (1 + (F_{D90} - 1) F(\theta_o)),\\
+        F_{D90} = 0.5 + \cos^2{\theta_h} \, m\_roughness, \\
+        F(\theta) = SchlickFresnel(\cos\theta) = (1-\cos\theta)^5.
+    $$
+
+    Results of roughness are shown below. It can be clearly seen that the specular effect decreases as roughness increases. <br><br>
+
+    <img src="images/Xia-Yitong-Images/disney/roughness_concat.png" style="text-align:center" class="img-responsive">
+    <p class="text-center"> Disney BRDFs: roughness from 0.0 to 1.0. Using PathMIS integrator. SPP=256. </p>
+
+    <br/>
+
+    <div class="twentytwenty-container" style="width: 500px">
+        <img src="images/Xia-Yitong-Images/disney/roughness_0.0.png" alt="Nori<br>roughness=0.0" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/disney/roughness_1.0.png" alt="Nori<br>roughness=1.0" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/disney/ref_rough_0.0.png" alt="Mitsuba<br>roughness=0.0" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/disney/ref_rough_1.0.png" alt="Mitsuba<br>roughness=1.0" class="img-responsive">
+    </div>
+    <p class="text-center"> Disney BRDFs: comparisons on roughness. Using PathMIS integrator. SPP=256. </p> <br> 
+    
+    <!-- ========================== -->
+
+    <h4> Specular & SpecularTint <a id="specular"></a></h4>
+    Specularness is used for controlling the degree of reflecting environmental contents on the object surface. The specular lobe is defined as:
+    
+    $$
+    \begin{split}
+        f_s(\theta_i, \theta_o) &= \frac{D_s(\theta_h)F_s(\theta_i)G_s(\theta_i,\theta_o)}{4\cos\theta_i\cos\theta_o}, \\
+        D_s(\theta) &= D_{GTR2}(\theta), \\
+        F_s(\theta) &= lerp(C_{spec},\,1.0,\, \text{FH}), \\
+        G_s(\theta) &= GGX(\cos(\theta_i), \alpha_s)\cdot GGX(\cos(\theta_o), \alpha_s), \\
+        C_{tint} &= C_{dlin} / C_{lummin}, \\
+        C_{spec} &= lerp(0.08\cdot m\_specular\cdot lerp(1.0, C_{tint}, m\_specularTint), C_{dlin}, m\_metallic), \\
+        \text{FH} &= SchlickFresnel(\cos\theta_d).
+    \end{split}
+    $$
+
+    Then for <code>DisneyBRDF::eval()</code>, the return value would be the combinations of diffuse and specular lobe. <br><br>
+
+    As for <code>DisneyBRDF::sample()</code>, there is a diffuse weight \( w_{diffuse} = \frac{1 - m\_metallic}{2} \) controlling the weight of roughness sampling. For sampling in diffuse lobe, it equals to using cosine hemisphere sampling. For sampling in specular lobe, it should samples from \( D(\theta)\cos(\theta_d) \), where \( D(\theta) \) is either GTR2 for isotropic specular or GTR2Aniso for anisotropic specular.<br><br>
+
+    Results of specular are shown below. It can be clearly seen that the reflection content of the background becomes clearer as the specularness increases. And as specular tint increases, the color of the reflection content transits from object's color to lighting color.<br><br>
+
+    <img src="images/Xia-Yitong-Images/disney/spec_concat.png" style="text-align:center" class="img-responsive">
+    <img src="images/Xia-Yitong-Images/disney/spectint_concat.png" style="text-align:center" class="img-responsive">
+    <p class="text-center"> Disney BRDFs: specular (1st row) and specular tint (2nd row) from 0.0 to 1.0. Using PathMIS integrator. SPP=256. </p>
+
+    <br/>
+
+    <div class="twentytwenty-container" style="width: 500px">
+        <img src="images/Xia-Yitong-Images/disney/spec_0.1.png" alt="Nori<br>specular=0.1" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/disney/spec_1.0.png" alt="Nori<br>specular=1.0" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/disney/ref_specular_0.1.png" alt="Mitsuba<br>specular=0.1" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/disney/ref_specular_1.0.png" alt="Mitsuba<br>specular=1.0" class="img-responsive">
+    </div>
+    <p class="text-center"> Disney BRDFs: comparisons on specular. Using PathMIS integrator. SPP=256. </p> <br> 
+    <!-- ========================== -->
+
+    <h4> Metallic <a id="metallic"></a> </h4>
+    Metallicness is used for controlling how much does the material have the metallic feel. The diffuse lobe is weighted by \( (1-m\_metallic) \) while the specular lobe is not influenced. Thus, the metallic effect is provided by increasing the ratio of specular reflection to diffuse reflection.<br>
+
+    Results of metallic are shown below. It can be clearly seen that the metallic feel increases and specular reflection increases as metallicness increases.<br><br>
+
+    <img src="images/Xia-Yitong-Images/disney/metallic_concat.png" style="text-align:center" class="img-responsive">
+    <p class="text-center"> Disney BRDFs: metallic from 0.0 to 1.0. Using PathMIS integrator. SPP=256. </p>
+
+    <br/>
+
+    <div class="twentytwenty-container" style="width: 500px">
+        <img src="images/Xia-Yitong-Images/disney/metalic_0.0.png" alt="Nori<br>metallic=0.0" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/disney/metalic_1.0.png" alt="Nori<br>metallic=1.0" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/disney/ref_metallic_0.0.png" alt="Mitsuba<br>metallic=0.0" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/disney/ref_metallic_1.0.png" alt="Mitsuba<br>metallic=1.0" class="img-responsive">
+    </div>
+    <p class="text-center"> Disney BRDFs: comparisons on metallic. Using PathMIS integrator. SPP=256. </p> <br> 
+
+    <!-- ========================== -->
+
+    <h4> Sheen <a id="sheen"></a></h4>
+    Sheen is an additional grazing component primarily intended for cloth. The effects should be that, the more sheen we allow, the more transparent-like the object should have on its thin parts.<br>
+
+    Results of sheen are shown below. The transition images may not clearly show the effect of sheen. Thus, I add the zoomed-in comparisons between different sheen factors and different frameworks.<br><br>
+
+    <img src="images/Xia-Yitong-Images/disney/sheen_concat.png" style="text-align:center" class="img-responsive">
+    <p class="text-center"> Disney BRDFs: sheen from 0.0 to 1.0. Using PathMIS integrator. SPP=256. </p>
+
+    <br>
+
+    <div class="twentytwenty-container" style="width: 500px">
+        <img src="images/Xia-Yitong-Images/disney/sheen_0.0.png" alt="Nori<br>sheen=0.0" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/disney/sheen_1.0.png" alt="Nori<br>sheen=1.0" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/disney/ref_sheen_0.0.png" alt="Mitsuba<br>sheen=0.0" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/disney/ref_sheen_1.0.png" alt="Mitsuba<br>sheen=1.0" class="img-responsive">
+    </div>
+    <p class="text-center"> Disney BRDFs: comparisons on sheen. Using PathMIS integrator. SPP=256. </p> <br> 
+
+    <!-- ========================== -->
+
+    <h4> Anisotropic <a id="anisotropic"></a></h4>
+    Anisotropic is used for controlling the anisotropic spread of reflection. <br>
+
+    In implementation, it takes more than just replacing the GTR2 with GTR2Aniso in the specular lobe. The key challenge is the conversion between three coordinate representations of ray direction: (1) world coordinate, (2) its.shFrame's local coordinate, (3) tangent frame's local coordinate. The <code>Warp::squareToGTR2Aniso()</code> and <code>Warp::squareToGTR2AnisoPdf()</code> assume that the local coordinate is aligned with coordinate (3), yet in the past assignments the ray direction is localized by its.shFrame and this localization does not specify the directions of X and Y axes. Thus, those two local frame need a uniform conversion to ensure the consistency of surface tangent frame.<br><br>
+
+    Thus, I expanded the <code>BSDFQueryRecord</code> by adding hitting point's mesh normal in world coordinate (<code>its.shFrame.n</code>), incident and excident radiance direction in world coordinate (<code>wi_world, wo_world</code>) , and hitting point's shadow frame (<code>its.shFrame</code>). All those attributes will be updated inside integrators. <br><br>
+    
+    As for the sampling, in short, the sampled vector are represented within coordinate (3), it needs to be converted back to coordinate (1) via tangent local frame. Then the world vector is converted to coordinate (2) to match what is used by intergrators.<br><br>
+
+    As for tangent frame, there is a user-defined main axis <code>globalUp</code>. This axis represents the "source" and "sink" of the anisotropic texture flows. The tangent frame of each surface point is defined as follow:
+    <ul>
+        <li>The X (or S) axis is defined to be the cross product of the main axis and the normal.</li>
+        <li>The Y (or T) axis is defined to be the cross product of the normal and the X axis.</li>
+    </ul>
+    This definition ensures that the tangent frames are consistent on the object surface as long as the distribution of mesh points and surface normals are consistent. And according to Nori, the surface normal is a product of barycentrically interpolation. And typically the mesh surface points will be consistent as well. <br><br>
+
+    Results of anisotropic are shown below. It can be clearly seen that the anisotropic effect increases as the controlling coefficient increases. Also, I show the results of different user-defined main axises. The results are quite satisfying. This function is not equipped by Mitsuba.<br><br>
+
+    <img src="images/Xia-Yitong-Images/disney/aniso_concat.png" style="text-align:center" class="img-responsive">
+    <p class="text-center"> Disney BRDFs: anisotropic from 0.0 to 1.0. Using PathMIS integrator. SPP=256. </p>
+
+    <br>
+
+    <img src="images/Xia-Yitong-Images/disney/aniso_axis_concat.png" style="text-align:center" class="img-responsive">
+    <p class="text-center"> Disney BRDFs: different anisotropic axes. Using PathMIS integrator. SPP=256. </p>
+
+    <br>
+
+    <div class="twentytwenty-container" style="width: 500px">
+        <img src="images/Xia-Yitong-Images/disney/aniso_0.0.png" alt="Nori<br>anisotropic=0.0" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/disney/aniso_1.0.png" alt="Nori<br>anisotropic=1.0" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/disney/ref_aniso_0.0.png" alt="Mitsuba<br>anisotropic=0.0" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/disney/ref_aniso_1.0.png" alt="Mitsuba<br>anisotropic=1.0" class="img-responsive">
+    </div>
+    <p class="text-center"> Disney BRDFs: comparisons on anisotropic. Main axis = [1, 1, 0]. Using PathMIS integrator. SPP=256. </p> <br> 
+
+    <!-- ========================== -->
+
+    <h4> Importance Sampling </h4>
+    <h5> GTR2 </h5>
+    This is the distribution for isotropic specular reflection.<br/><br/>
+
+
+    <p style="text-align:center">
+        <img src="images/Xia-Yitong-Images/disney/gtr2_0.2_sample.png" style="width: 400px">
+        <img src="images/Xia-Yitong-Images/disney/gtr2_0.2_test.png" style="width: 400px">
+    </p>
+    <p class="text-center"> GTR2: \( \alpha=0.2 \). </p>
+
+    <br>
+
+    <p style="text-align:center">
+        <img src="images/Xia-Yitong-Images/disney/gtr2_0.8_sample.png" style="width: 400px; center: auto">
+        <img src="images/Xia-Yitong-Images/disney/gtr2_0.8_test.png" style="width: 400px; center: auto">
+    </p>
+    <p class="text-center"> GTR2: \( \alpha=0.8 \). </p>
+    <br>
+
+    <h5> GTR2Aniso </h5>
+    This is the distribution for anisotropic specular reflection. It can be observed that the degree of anisotropic is closely related to roughness, since the aspect ratio is defined with roughness. The rougher the material is, the larger span of the anisotropic distribution. The larger aspect value we set, the stronger anisotropic effect on the ratio of long axis to short axis. <br><br>
+    
+    <p style="text-align:center">
+        <img src="images/Xia-Yitong-Images/disney/gtr2aniso_rough_0.2_aspect_0.3_sample.png" style="width: 400px; center: auto">
+        <img src="images/Xia-Yitong-Images/disney/gtr2aniso_rough_0.2_aspect_0.3_test.png" style="width: 400px; center: auto">
+    </p>
+    <p class="text-center"> GTR2Aniso: \( m\_rougness = 0.2, aspect = 0.3 \). </p>
+    <br>
+    
+    <p style="text-align:center">
+        <img src="images/Xia-Yitong-Images/disney/gtr2aniso_rough_0.2_aspect_0.5_sample.png" style="width: 400px; center: auto">
+        <img src="images/Xia-Yitong-Images/disney/gtr2aniso_rough_0.2_aspect_0.5_test.png" style="width: 400px; center: auto">
+    </p>
+    <p class="text-center"> GTR2Aniso: \( m\_rougness = 0.2, aspect = 0.5 \). </p>
+    <br>
+    
+    <p style="text-align:center">
+        <img src="images/Xia-Yitong-Images/disney/gtr2aniso_rough_0.5_aspect_0.3_sample.png" style="width: 400px; center: auto">
+        <img src="images/Xia-Yitong-Images/disney/gtr2aniso_rough_0.5_aspect_0.3_test.png" style="width: 400px; center: auto">
+    </p>
+    <p class="text-center"> GTR2Aniso: \( m\_rougness = 0.5, aspect = 0.3 \). </p>
+    <br>
+    
+    <p style="text-align:center">
+        <img src="images/Xia-Yitong-Images/disney/gtr2aniso_rough_0.5_aspect_0.8_sample.png" style="width: 400px; center: auto">
+        <img src="images/Xia-Yitong-Images/disney/gtr2aniso_rough_0.5_aspect_0.8_test.png" style="width: 400px; center: auto">
+    </p>
+    <p class="text-center"> GTR2Aniso: \( m\_rougness = 0.5, aspect = 0.8 \). </p>
+    <br>
+    
+    <p style="text-align:center">
+        <img src="images/Xia-Yitong-Images/disney/gtr2aniso_rough_0.9_aspect_0.5_sample.png" style="width: 400px; center: auto">
+        <img src="images/Xia-Yitong-Images/disney/gtr2aniso_rough_0.9_aspect_0.5_test.png" style="width: 400px; center: auto">
+    </p>
+    <p class="text-center"> GTR2Aniso: \( m\_rougness = 0.9, aspect = 0.5 \). </p>
+    <br>
+
+
+    <!-- ================================================================= -->
+
+
+    <h3><a id="nlmean"></a>15.9 Moderate Denoising 1: NL-Means using Pixel Variance Estimates Implementer: Yitong Xia <a href="#home">[home]</a></h3>
+
+    <ul>
+        <li><code>include/nori/render.h</code></li>
+        <li><code>src/render.cpp</code></li>
+        <!-- <li><code>scenes/final/denoising/denoising.py</code></li>
+        <li><code>scenes/final/denoising/rmse.ipynb</code></li> -->
+    </ul>
+
+    Firstly, I modify the main render pipeline. After rendering one sample per pixel, the updated image block will be used for online updating mean and variances. After all rounds of sampling, the variance will be saved as an EXR file. Since the variance value may be too low to be seen, I scaled it by 500 for clear visualization.<br><br>
+
+    <div class="twentytwenty-container" style="width: 600px">
+        <img src="images/Xia-Yitong-Images/denoising/boxes_noisy.png" alt="Noisy<br>SPP=128" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/denoising/boxes_REF.png" alt="Reference<br>SPP=2048" class="img-responsive">
+    </div>
+    <p class="text-center"> NL-Mean Denoising: noisy image and the corresponding reference rendering. </p> <br>
+
+    <div class="twentytwenty-container" style="width: 600px">
+        <img src="images/Xia-Yitong-Images/denoising/boxes_var.png" alt="Variance" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/denoising/boxes_varx500.png" alt="Variance \(\times\) 500" class="img-responsive">
+    </div>
+    <p class="text-center"> NL-Mean Denoising: estimated variancees. </p> <br>
+
+    Secondly, I apply NL-Mean Denoising in Python. It can be seen from images that the denoising smooths the noises and preserving sharp edge features at the same time. But it leaves some uneven-colored flaws on the celling and box surfaces, which shows the limitations of NL-Mean Denoising and may be alleviated by more advanced denoising techniques.<br><br>
+    
+    The RMSE between noisy/denoised image to reference image are computed and marked in the images. It can be seen that the denoised image's discrepancy to reference image decreases, which demonstrates the effectiveness of the denoising.<br><br>
+
+    <div class="twentytwenty-container" style="width: 600px">
+        <img src="images/Xia-Yitong-Images/denoising/boxes_noisy.png" alt="Noisy<br>RMSE=0.03697" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/denoising/boxes_NLDenoised.png" alt="Denoised<br>RMSE=0.01350" class="img-responsive">
+        <img src="images/Xia-Yitong-Images/denoising/boxes_REF.png" alt="Reference<br>" class="img-responsive">
+    </div>
+    <p class="text-center"> NL-Mean Denoising: results of denoising. </p> <br>
+
+    <br>
+    <br>
+
+    <h2>References<a id="refer"></a></h2>
+    <h4><a href="#home">[home]</a></h4>
+    <ul>
+        <li id="ref1">[1] <a href="https://github.com/lvandeve/lodepng">LodePNG: PNG encoder and decoder in C and C++, without dependencies.</a>
+        <li id="ref2">[2] <a href="https://pbr-book.org/3ed-2018/Light_Transport_I_Surface_Reflection/Sampling_Light_Sources">PBRT: 14.2.4 Infinite Area Lights.</a>
+        <li id="ref3">[3] <a href="https://blog.selfshadow.com/publications/s2012-shading-course/#course_content">Physically Based Shading at Disney.</a>
+        <li id="ref3">[4] <a href="https://github.com/wdas/brdf/blob/main/src/brdfs/disney.brdf">https://github.com/wdas/brdf/blob/main/src/brdfs/disney.brdf</a>
+        <li id="radial">[5] <a>Drap, P., & Lefèvre, J. (2016). An Exact Formula for Calculating Inverse Radial Lens Distortions. Sensors (Basel, Switzerland), 16(6), 807. https://doi.org/10.3390/s16060807</a> </li>
+    </ul>
+
+	<!-- ================================================================= -->
+</div>
+</div>
+
+
+<!-- Bootstrap core JavaScript -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+<script src="resources/bootstrap.min.js"></script>
+<script src="/js/offcanvas.js"></script>
+<script src="resources/jquery.event.move.js"></script>
+<script src="resources/jquery.twentytwenty.js"></script>
+
+
+<script>
+$(window).load(function(){$(".twentytwenty-container").twentytwenty({default_offset_pct: 0.5});});
+</script>
+
+</body>
+</html>
