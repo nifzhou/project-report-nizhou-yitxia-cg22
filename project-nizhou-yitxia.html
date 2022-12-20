@@ -98,7 +98,7 @@
 
     <h2>Feature Implementation</h2>
 
-    <h3><a id="homo_media"></a>Homogeneous Participating Media [integrator: path tracer] Implementer: Ningfeng Zhou <a href="#home">[home]</a></h3>
+    <h3><a id="homo_media"></a>Homogeneous Participating Media [integrator: path tracer]. Implementer: Ningfeng Zhou <a href="#home">[home]</a></h3>
         <ul>
             <li> Main file created for the feature (other files trivally modified for code frame are listed in ./nori/modifiedFiles.txt) </li>
         </ul>
@@ -170,7 +170,7 @@
     </p>
 
 
-    <h3><a id="camera_model"></a>Advanced Camera Model [depth of field, lens distortion, chromatic aberrations] Implementer: Ningfeng Zhou <a href="#home">[home]</a></h3>
+    <h3><a id="camera_model"></a>Advanced Camera Model [depth of field, lens distortion, chromatic aberrations]. Implementer: Ningfeng Zhou <a href="#home">[home]</a></h3>
         We can add some additional camera properties to the pin-hole camera to generate more realistic images. Here we select to implement the depth of field, 
         the lens distortion, and the chromatic aberration for our project.
     <ul>
@@ -286,7 +286,7 @@
 
     </p>
 
-    <h3><a id="subsurface"></a>Subsurface Scattering [photon-beam diffusion] Implementer: Ningfeng Zhou <a href="#home">[home]</a></h3>
+    <h3><a id="subsurface"></a>Subsurface Scattering [photon-beam diffusion]. Implementer: Ningfeng Zhou <a href="#home">[home]</a></h3>
     <p>
         <ul>
             <li> Main file created for the feature (other files trivally modified for code frame are listed in ./nori/modifiedFiles.txt) </li>
@@ -408,7 +408,7 @@
 
 	<!-- ================================================================= -->
 
-	<h3><a id="imgtexture"></a>5.3 Image As Textures Implementer: Yitong Xia <a href="#home">[home]</a></h3>
+	<h3><a id="imgtexture"></a>5.3 Image As Textures. Implementer: Yitong Xia <a href="#home">[home]</a></h3>
     <ul>
         <li><code>include/nori/lodepng.h</code></li>
         <li><code>src/image_texture.cpp</code></li>
@@ -428,7 +428,7 @@
 
 	<!-- ================================================================= -->
 
-	<h3><a id="spotlight"></a>5.10 Simple Extra Emitter: Spotlight Implementer: Yitong Xia <a href="#home">[home]</a></h3>
+	<h3><a id="spotlight"></a>5.10 Simple Extra Emitter: Spotlight. Implementer: Yitong Xia <a href="#home">[home]</a></h3>
     <ul>
         <li><code>src/spotlight.cpp</code></li>
     </ul>
@@ -447,7 +447,7 @@
 	<!-- ================================================================= -->
 
 
-	<h3><a id="texturedarea"></a>5.11 Textured Area Emitters Implementer: Yitong Xia <a href="#home">[home]</a></h3>
+	<h3><a id="texturedarea"></a>5.11 Textured Area Emitters. Implementer: Yitong Xia <a href="#home">[home]</a></h3>
     <ul>
         <li><code>src/rectangle.cpp</code></li>
         <li><code>src/textured_area.cpp</code></li>
@@ -501,7 +501,7 @@
 	<!-- ================================================================= -->
 
 
-	<h3><a id="envmap"></a>15.3 Environmental Map Emitter Implementer: Yitong Xia <a href="#home">[home]</a></h3>
+	<h3><a id="envmap"></a>15.3 Environmental Map Emitter. Implementer: Yitong Xia <a href="#home">[home]</a></h3>
     <ul>
         <li><code>src/envmap.cpp</code></li>
         <!-- <li><code>scenes/final/env_map/plot_samples.ipynb</code></li>  -->
@@ -555,7 +555,7 @@
     <!-- ================================================================= -->
 
 
-    <h3><a id="disney"></a>15.5 Disney BSDFs [roughness, specular, metallic, sheen, anisotropic] Implementer: Yitong Xia <a href="#home">[home]</a></h3>
+    <h3><a id="disney"></a>15.5 Disney BSDFs [roughness, specular, metallic, sheen, anisotropic]. Implementer: Yitong Xia <a href="#home">[home]</a></h3>
     <ul>
         <li><code>include/nori/warp.h</code></li>
         <li><code>src/disney.cpp</code></li>
@@ -670,20 +670,20 @@
     <h4> Anisotropic <a id="anisotropic"></a></h4>
     Anisotropic is used for controlling the anisotropic spread of reflection. <br>
 
-    In implementation, it takes more than just replacing the GTR2 with GTR2Aniso in the specular lobe. The key challenge is the conversion between three coordinate representations of ray direction: (1) world coordinate, (2) its.shFrame's local coordinate, (3) tangent frame's local coordinate. The <code>Warp::squareToGTR2Aniso()</code> and <code>Warp::squareToGTR2AnisoPdf()</code> assume that the local coordinate is aligned with coordinate (3), yet in the past assignments the ray direction is localized by its.shFrame and this localization does not specify the directions of X and Y axes. Thus, those two local frame need a uniform conversion to ensure the consistency of surface tangent frame.<br><br>
+    In the implementation, it takes more than just replacing the GTR2 with GTR2Aniso in the specular lobe. The key challenge is the conversion between three coordinate representations of ray direction: (1) world coordinate, (2) its.shFrame's local coordinate, and (3) tangent frame's local coordinate. The <code>Warp::squareToGTR2Aniso()</code> and <code>Warp::squareToGTR2AnisoPdf()</code> assume that the local coordinate is aligned with coordinate (3), yet in the past assignments the ray direction is localized by its.shFrame and this localization does not specify the directions of X and Y axes. Thus, those two local frames need a uniform conversion to ensure the consistency of the surface tangent frame.<br><br>
 
-    Thus, I expanded the <code>BSDFQueryRecord</code> by adding hitting point's mesh normal in world coordinate (<code>its.shFrame.n</code>), incident and excident radiance direction in world coordinate (<code>wi_world, wo_world</code>) , and hitting point's shadow frame (<code>its.shFrame</code>). All those attributes will be updated inside integrators. <br><br>
+    Thus, I expanded the <code>BSDFQueryRecord</code> by adding the hitting point's mesh normal in world coordinate (<code>its.shFrame.n</code>), incident and outgoing radiance direction in world coordinate (<code>wi_world, wo_world</code>), and hitting point's shadow frame (<code>its.shFrame</code>). All those attributes will be updated inside integrators. <br><br>
     
-    As for the sampling, in short, the sampled vector are represented within coordinate (3), it needs to be converted back to coordinate (1) via tangent local frame. Then the world vector is converted to coordinate (2) to match what is used by intergrators.<br><br>
+    As for the sampling, in short, the sampled vector is represented within coordinate (3), it needs to be converted back to coordinate (1) via the tangent local frame. Then the world vector is converted to coordinate (2) to match what is used by integrators.<br><br>
 
-    As for tangent frame, there is a user-defined main axis <code>globalUp</code>. This axis represents the "source" and "sink" of the anisotropic texture flows. The tangent frame of each surface point is defined as follow:
+    As for the tangent frame, there is a user-defined main axis <code>globalUp</code>. This axis represents the "source" and "sink" of the anisotropic texture flows. The tangent frame of each surface point is defined as follows:
     <ul>
-        <li>The X (or S) axis is defined to be the cross product of the main axis and the normal.</li>
+        <li>The X (or S) axis is defined to be the cross-product of the main axis and the normal.</li>
         <li>The Y (or T) axis is defined to be the cross product of the normal and the X axis.</li>
     </ul>
-    This definition ensures that the tangent frames are consistent on the object surface as long as the distribution of mesh points and surface normals are consistent. And according to Nori, the surface normal is a product of barycentrically interpolation. And typically the mesh surface points will be consistent as well. <br><br>
+    This definition ensures that the tangent frames are consistent on the object surface as long as the distribution of mesh points and surface normals is consistent. And according to Nori, the surface normal is a product of barycentric interpolation. And typically the mesh surface points will be consistent as well. <br><br>
 
-    Results of anisotropic are shown below. It can be clearly seen that the anisotropic effect increases as the controlling coefficient increases. Also, I show the results of different user-defined main axises. The results are quite satisfying. This function is not equipped by Mitsuba.<br><br>
+    The results of anisotropic are shown below. It can be clearly seen that the anisotropic effect increases as the controlling coefficient increases. Also, I show the results of different user-defined main axes. The results are quite satisfying. This function is not equipped by Mitsuba.<br><br>
 
     <img src="images/Xia-Yitong-Images/disney/aniso_concat.png" style="text-align:center" class="img-responsive">
     <p class="text-center"> Disney BRDFs: anisotropic from 0.0 to 1.0. Using PathMIS integrator. SPP=256. </p>
@@ -726,7 +726,7 @@
     <br>
 
     <h5> GTR2Aniso </h5>
-    This is the distribution for anisotropic specular reflection. It can be observed that the degree of anisotropic is closely related to roughness, since the aspect ratio is defined with roughness. The rougher the material is, the larger span of the anisotropic distribution. The larger aspect value we set, the stronger anisotropic effect on the ratio of long axis to short axis. <br><br>
+    This is the distribution for anisotropic specular reflection. It can be observed that the degree of anisotropic is closely related to roughness since the aspect ratio is defined with roughness. The rougher the material is, the larger span of the anisotropic distribution. The larger the aspect value we set, the stronger the anisotropic effect on the ratio of the long axis to the short axis. <br><br>
     
     <p style="text-align:center">
         <img src="images/Xia-Yitong-Images/disney/gtr2aniso_rough_0.2_aspect_0.3_sample.png" style="width: 400px; center: auto">
@@ -767,7 +767,7 @@
     <!-- ================================================================= -->
 
 
-    <h3><a id="nlmean"></a>15.9 Moderate Denoising 1: NL-Means using Pixel Variance Estimates Implementer: Yitong Xia <a href="#home">[home]</a></h3>
+    <h3><a id="nlmean"></a>15.9 Moderate Denoising 1: NL-Means using Pixel Variance Estimates. Implementer: Yitong Xia <a href="#home">[home]</a></h3>
 
     <ul>
         <li><code>include/nori/render.h</code></li>
